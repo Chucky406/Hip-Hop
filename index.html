@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEVENTEEN Hip-Hop Team 抽卡</title>
+
+<!-- html2canvas -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont;
+  background:#eaf6ff;
+  text-align:center;
+}
+
+/* 本命選擇畫面 */
+#biasSelect{
+  position:fixed;
+  inset:0;
+  background:#eaf6ff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+}
+.bias-options{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+  margin-top:20px;
+}
+.bias-options button{
+  padding:12px 20px;
+  border:none;
+  border-radius:20px;
+  background:#111;
+  color:#fff;
+  font-size:16px;
+}
+
+/* 卡背 */
+#card{
+  width:200px;
+  height:280px;
+  margin:30px auto;
+  border-radius:16px;
+  background:linear-gradient(135deg,#7cc7ff,#ff9ad5);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+#card::before{
+  content:"◆";
+  font-size:80px;
+  color:#fff;
+}
+
+/* 翻面卡 */
+.flip-card{
+  width:200px;
+  height:280px;
+  margin:20px auto;
+  perspective:1000px;
+  position:relative;
+}
+.flip-inner{
+  width:100%;
+  height:100%;
+  transition:transform .8s;
+  transform-style:preserve-3d;
+}
+.flip-card.show .flip-inner{
+  transform:rotateY(180deg);
+}
+.flip-front,
+.flip-back{
+  position:absolute;
+  inset:0;
+  border-radius:16px;
+  backface-visibility:hidden;
+}
+.flip-front{
+  background:linear-gradient(135deg,#7cc7ff,#ff9ad5);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.flip-front span{
+  font-size:80px;
+  color:#fff;
+}
+.flip-back{
+  background:#fff;
+  transform:rotateY(180deg);
+  text-align:center;
+  position:relative;
+}
+.flip-back img{
+  width:180px;
+  border-radius:12px;
+}
+.flip-back h3{
+  margin:8px 0;
+  font-size:14px;
+}
+
+/* 本命發光 */
+.flip-card.bias{
+  box-shadow:0 0 20px #4da6ff,0 0 40px #ff7ac8;
+}
+
+/* NEW */
+.new-badge{
+  position:absolute;
+  top:8px;
+  right:8px;
+  background:#ff4d6d;
+  color:#fff;
+  font-size:12px;
+  padding:2px 6px;
+  border-radius:10px;
+}
+
+/* 浮水印 */
+.watermark{
+  position:absolute;
+  bottom:10px;
+  right:12px;
+  font-size:12px;
+  opacity:.6;
+}
+.bias-mark{
+  position:absolute;
+  top:10px;
+  left:12px;
+  font-size:12px;
+  opacity:.7;
+}
+
+/* 撒花 */
+.confetti{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+}
+.confetti span{
+  position:absolute;
+  width:8px;
+  height:8px;
+  background:hsl(var(--h),80%,70%);
+  animation:fall 1.2s linear forwards;
+}
+@keyframes fall{
+  from{transform:translateY(-10px);}
+  to{transform:translateY(110vh);opacity:0;}
+}
+.confetti.bias span{
+  width:10px;
+  height:10px;
+  animation:fall-spin 1.6s ease-out forwards;
+}
+@keyframes fall-spin{
+  from{transform:translateY(-20px) rotate(0) scale(1.4);}
+  to{transform:translateY(110vh) rotate(720deg) scale(1);opacity:0;}
+}
+
+/* 卡池 */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(80px,1fr));
+  gap:10px;
+  margin:10px;
+}
+#pool img{
+  width:100%;
+  border-radius:8px;
+  opacity:.35;
+  filter:grayscale(1);
+}
+#pool img.available{
+  opacity:1;
+  filter:none;
+}
+
+/* 按鈕 */
+button{
+  padding:8px 14px;
+  border:none;
+  border-radius:20px;
+  background:#111;
+  color:#fff;
+  margin:6px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 本命選擇 -->
+<div id="biasSelect">
+  <h2>請選擇你的本命</h2>
+  <div class="bias-options">
+    <button data-bias="S.COUPS">S.COUPS</button>
+    <button data-bias="WONWOO">WONWOO</button>
+    <button data-bias="MINGYU">MINGYU</button>
+    <button data-bias="VERNON">VERNON</button>
+  </div>
+</div>
+
+<h1>SEVENTEEN Hip-Hop Team 抽卡</h1>
+<div>
+  今日剩餘抽卡：<span id="chance">2</span><br>
+  剩餘卡片：<span id="remain">16</span>
+</div>
+
+<div id="card"></div>
+<div id="result"></div>
+
+<button id="saveBtn">儲存這張卡</button>
+<button id="soundToggle"></button>
+
+<div id="pool">
+  <h2>卡池</h2>
+  <div class="grid" id="poolGrid"></div>
+</div>
+
+<div class="confetti" id="confetti"></div>
+
+<audio id="drawSound" src="sounds/ScreenRecording_01-26-2026 13-18-42_1-2.m4a"></audio>
+<audio id="biasSound" src="sounds/bias.mp3"></audio>
+
+<script>
+const TOTAL = 16;
+const today = new Date().toDateString();
+
+/* 卡片資料（已接你 16 張圖） */
+const cards = [
+  {id:1,member:"S.COUPS",text:"隊長在，世界就不會亂",img:"images/88A0FA78-0A86-4215-911D-75C3089D1B87.jpeg"},
+  {id:2,member:"S.COUPS",text:"氣場就是實力",img:"images/IMG_3440.jpeg"},
+  {id:3,member:"S.COUPS",text:"你站在這裡，本身就是答案",img:"images/IMG_3769.jpeg"},
+  {id:4,member:"S.COUPS",text:"被守護的感覺",img:"images/IMG_3439.jpeg"},
+
+  {id:5,member:"WONWOO",text:"沉默本身就是攻擊",img:"images/IMG_3766.jpeg"},
+  {id:6,member:"WONWOO",text:"低調到讓人上癮",img:"images/IMG_3767.jpeg"},
+  {id:7,member:"WONWOO",text:"眼神比話還多",img:"images/IMG_3768.jpeg"},
+  {id:8,member:"WONWOO",text:"靜靜地擊中你",img:"images/IMG_3763.jpeg"},
+
+  {id:9,member:"MINGYU",text:"一秒被抓住視線",img:"images/5H2A3818.jpeg"},
+  {id:10,member:"MINGYU",text:"存在感犯規",img:"images/5H2A4225.jpeg"},
+  {id:11,member:"MINGYU",text:"這就是心動",img:"images/IMG_3557.jpeg"},
+  {id:12,member:"MINGYU",text:"靠近就逃不掉",img:"images/IMG_3765.jpeg"},
+
+  {id:13,member:"VERNON",text:"世界只有你這個版本",img:"images/IMG_3773.jpeg"},
+  {id:14,member:"VERNON",text:"不需要被定義",img:"images/IMG_3772.jpeg"},
+  {id:15,member:"VERNON",text:"自由又危險",img:"images/IMG_3771.jpeg"},
+  {id:16,member:"VERNON",text:"你就是風格本身",img:"images/IMG_3774.jpeg"}
+];
+
+/* 本命 */
+let MY_BIAS = localStorage.getItem("myBias");
+const biasScreen = document.getElementById("biasSelect");
+if(MY_BIAS) biasScreen.style.display="none";
+document.querySelectorAll(".bias-options button").forEach(b=>{
+  b.onclick=()=>{
+    MY_BIAS=b.dataset.bias;
+    localStorage.setItem("myBias",MY_BIAS);
+    biasScreen.style.display="none";
+  };
+});
+
+/* 抽卡資料 */
+let data = JSON.parse(localStorage.getItem("svtCard")) || {date:today,chance:2,owned:[]};
+if(data.date!==today) data={date:today,chance:2,owned:[]};
+
+const drawSound=document.getElementById("drawSound");
+const biasSound=document.getElementById("biasSound");
+
+updateUI();
+
+/* 抽卡 */
+document.getElementById("card").onclick=()=>{
+  if(data.chance<=0) return alert("今天抽完了！");
+  let pool=cards.filter(c=>!data.owned.includes(c.id));
+  let card=pool[Math.floor(Math.random()*pool.length)];
+  const isNew=!data.owned.includes(card.id);
+  data.owned.push(card.id);
+  data.chance--;
+  localStorage.setItem("svtCard",JSON.stringify(data));
+
+  drawSound.currentTime=0;
+  drawSound.play();
+
+  showResult(card,isNew);
+  updateUI();
+
+  if(card.member===MY_BIAS){
+    biasSound.play();
+    biasConfetti();
+  }else{
+    confetti();
+  }
+};
+
+/* 顯示卡 */
+function showResult(card,isNew){
+  const r=document.getElementById("result");
+  r.innerHTML=`
+  <div class="flip-card show ${card.member===MY_BIAS?'bias':''}">
+    <div class="flip-inner">
+      <div class="flip-front"><span>◆</span></div>
+      <div class="flip-back">
+        ${isNew?'<div class="new-badge">NEW</div>':''}
+        <div class="bias-mark">MY BIAS · ${MY_BIAS}</div>
+        <h3>${card.text}</h3>
+        <img src="${card.img}">
+        <div class="watermark">SEVENTEEN HIP-HOP TEAM</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* UI */
+function updateUI(){
+  document.getElementById("chance").textContent=data.chance;
+  document.getElementById("remain").textContent=TOTAL-data.owned.length;
+  updatePool();
+}
+
+/* 卡池 */
+function updatePool(){
+  const g=document.getElementById("poolGrid");
+  g.innerHTML="";
+  cards.forEach(c=>{
+    const img=document.createElement("img");
+    img.src=c.img;
+    if(!data.owned.includes(c.id)) img.classList.add("available");
+    g.appendChild(img);
+  });
+}
+
+/* 撒花 */
+function confetti(){
+  const box=document.getElementById("confetti");
+  for(let i=0;i<40;i++){
+    const s=document.createElement("span");
+    s.style.left=Math.random()*100+"vw";
+    s.style.setProperty("--h",Math.random()*360);
+    box.appendChild(s);
+    setTimeout(()=>s.remove(),1200);
+  }
+}
+function biasConfetti(){
+  const box=document.getElementById("confetti");
+  box.classList.add("bias");
+  for(let i=0;i<90;i++){
+    const s=document.createElement("span");
+    s.style.left=Math.random()*100+"vw";
+    s.style.background=["#111","#4da6ff","#ff7ac8"][Math.floor(Math.random()*3)];
+    box.appendChild(s);
+    setTimeout(()=>s.remove(),1600);
+  }
+  setTimeout(()=>box.classList.remove("bias"),1200);
+}
+
+/* 存圖 */
+document.getElementById("saveBtn").onclick=()=>{
+  const t=document.querySelector(".flip-card");
+  html2canvas(t,{scale:2}).then(c=>{
+    const a=document.createElement("a");
+    a.href=c.toDataURL("image/png");
+    a.download="SVT_HIPHOP_CARD.png";
+    a.click();
+  });
+};
+</script>
+</body>
+</html>
